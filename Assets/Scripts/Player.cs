@@ -7,12 +7,15 @@ public class Player : MonoBehaviour
     public float speed;
     public float gravity;
     public float smoothRotationTime;
+    public float colliderRadius;
+    public List<Transform> enemies = new List<Transform>();
 
     private float smoothTurnVelocity;
     private Animator animator;
     private Transform cam;
     private CharacterController characterController;
     private Vector3 moveDirection;
+    private bool isAttacking;
 
     private const int LEFT_CLICK_BUTTON_INDEX = 0;
 
@@ -64,11 +67,17 @@ public class Player : MonoBehaviour
                 // mount the move direction forwared based on angle
                 moveDirection = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * speed;
 
-                SetTransition(AnimationStates.Walk);
+                if (!isAttacking)
+                {
+                    SetTransition(AnimationStates.Walk);
+                }
             } else
             {
                 moveDirection = Vector3.zero;
-                SetTransition(AnimationStates.Idle);
+                if (!isAttacking)
+                {
+                    SetTransition(AnimationStates.Idle);
+                }
             }
         }
 
@@ -81,7 +90,46 @@ public class Player : MonoBehaviour
     {
         if (characterController.isGrounded && Input.GetMouseButtonDown(LEFT_CLICK_BUTTON_INDEX))
         {
-            SetTransition(AnimationStates.Attack);
+            StartCoroutine("Attack");
         }
+    }
+
+    IEnumerator Attack()
+    {
+        isAttacking = true;
+        SetTransition(AnimationStates.Attack);
+
+        yield return new WaitForSeconds(0.4f);
+
+        GetEnemiesList();
+
+        foreach (Transform enemy in enemies)
+        {
+            // inflict damage
+            print(enemy.name);
+        }
+
+        yield return new WaitForSeconds(1f);
+
+        isAttacking = false;
+    }
+
+    void GetEnemiesList()
+    {
+        enemies.Clear();
+
+        foreach (Collider collider in Physics.OverlapSphere((transform.position + transform.forward * colliderRadius), colliderRadius))
+        {
+            if (collider.gameObject.CompareTag("Enemy"))
+            {
+                enemies.Add(collider.transform);
+            }
+        }
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position + transform.forward, colliderRadius);
     }
 }
