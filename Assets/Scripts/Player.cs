@@ -15,7 +15,6 @@ public class Player : MonoBehaviour
     private Transform cam;
     private CharacterController characterController;
     private Vector3 moveDirection;
-    private bool isAttacking;
 
     private const int LEFT_CLICK_BUTTON_INDEX = 0;
 
@@ -58,26 +57,30 @@ public class Player : MonoBehaviour
 
             if (direction.magnitude > 0)
             {
-                // get player and camera angles
-                float angle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + cam.eulerAngles.y;
-                // a smoothy angle derivative
-                float smoothAngle = Mathf.SmoothDampAngle(transform.eulerAngles.y, angle, ref smoothTurnVelocity, smoothRotationTime);
-                // rotate the user based on smooth angle
-                transform.rotation = Quaternion.Euler(0f, smoothAngle, 0f);
-                // mount the move direction forwared based on angle
-                moveDirection = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * speed;
+                if (!animator.GetBool("attacking"))
+                {
+                    // get player and camera angles
+                    float angle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + cam.eulerAngles.y;
+                    // a smoothy angle derivative
+                    float smoothAngle = Mathf.SmoothDampAngle(transform.eulerAngles.y, angle, ref smoothTurnVelocity, smoothRotationTime);
+                    // rotate the user based on smooth angle
+                    transform.rotation = Quaternion.Euler(0f, smoothAngle, 0f);
+                    // mount the move direction forwared based on angle
+                    moveDirection = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * speed;
 
-                if (!isAttacking)
-                {
                     SetTransition(AnimationStates.Walk);
-                }
-            } else
-            {
-                moveDirection = Vector3.zero;
-                if (!isAttacking)
+
+                    animator.SetBool("walking", true);
+                } else
                 {
-                    SetTransition(AnimationStates.Idle);
+                    animator.SetBool("walking", false);
+                    moveDirection = Vector3.zero;
                 }
+            } else if (animator.GetBool("walking"))
+            {
+                animator.SetBool("walking", false);
+                SetTransition(AnimationStates.Idle);
+                moveDirection = Vector3.zero;
             }
         }
 
@@ -90,13 +93,22 @@ public class Player : MonoBehaviour
     {
         if (characterController.isGrounded && Input.GetMouseButtonDown(LEFT_CLICK_BUTTON_INDEX))
         {
-            StartCoroutine("Attack");
+            if (animator.GetBool("walking"))
+            {
+                animator.SetBool("walking", false);
+                SetTransition(AnimationStates.Idle);
+            }
+
+            if (!animator.GetBool("walking"))
+            {
+                StartCoroutine("Attack");
+            }
         }
     }
 
     IEnumerator Attack()
     {
-        isAttacking = true;
+        animator.SetBool("attacking", true);
         SetTransition(AnimationStates.Attack);
 
         yield return new WaitForSeconds(0.4f);
@@ -111,7 +123,7 @@ public class Player : MonoBehaviour
 
         yield return new WaitForSeconds(1f);
 
-        isAttacking = false;
+        animator.SetBool("attacking", false);
     }
 
     void GetEnemiesList()
